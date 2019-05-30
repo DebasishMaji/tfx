@@ -25,7 +25,6 @@ from tfx.components.base import base_driver
 from tfx.orchestration.airflow import airflow_adapter
 from tfx.utils import logging_utils
 
-
 # TODO(b/126566908): More documentation for Airflow modules.
 _OrchestrationSource = collections.namedtuple(
     '_OrchestrationSource',
@@ -102,7 +101,7 @@ class _TfxWorker(models.DAG):
     publishcache_op.set_upstream(checkcache_op)
 
 
-class Component(subdag_operator.SubDagOperator):
+class Component(object):
   """Generic TFX component that consists of drivers, executors, and metadata."""
 
   def _get_working_dir(self, base_dir, component_name, unique_name='DEFAULT'):
@@ -118,10 +117,8 @@ class Component(subdag_operator.SubDagOperator):
     task_id = parent_dag.dag_id + '.' + worker_name
 
     # Create output object of appropriate type
-    output_dir = self._get_working_dir(
-        parent_dag.project_path,
-        component_name,
-        unique_name or '')
+    output_dir = self._get_working_dir(parent_dag.project_path, component_name,
+                                       unique_name or '')
 
     # Update the output dict before providing to downstream componentsget_
     for k, output_list in output_dict.items():
@@ -151,8 +148,10 @@ class Component(subdag_operator.SubDagOperator):
         additional_pipeline_args=parent_dag.additional_pipeline_args,
         metadata_connection_config=parent_dag.metadata_connection_config,
         logger_config=my_logger_config)
-    subdag_operator.SubDagOperator.__init__(
-        self, subdag=worker, task_id=worker_name, dag=parent_dag)
+    subdag = subdag_operator.SubDagOperator(
+        subdag=worker, task_id=worker_name, dag=parent_dag)
 
     parent_dag.add_node_to_graph(
-        node=self, consumes=input_dict.values(), produces=output_dict.values())
+        node=subdag,
+        consumes=input_dict.values(),
+        produces=output_dict.values())
